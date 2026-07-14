@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Wealth Companion (Offline)</title>
+    <!-- Load Tailwind CSS for modern, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Load FileSaver.js for simulating PDF/JSON exports -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        :root {
+            --color-mint: #e0f2f1; /* Light Mint */
+            --color-coral: #fbcfe8; /* Light Coral/Pink */
+            --color-cream: #fef3c7; /* Cream */
+            --color-soft-blue: #bfdbfe; /* Soft Blue */
+            --color-primary: #10b981; /* Emerald */
+            --color-secondary: #f472b6; /* Pink */
+            --color-bg: #f9fafb; /* Light Gray Background */
+            --color-text: #1f2937; /* Dark Gray Text */
+        }
+        
+        html.dark {
+            --color-mint: #064e3b;
+            --color-coral: #9d174d;
+            --color-cream: #78350f;
+            --color-soft-blue: #1e3a8a;
+            --color-primary: #34d399;
+            --color-secondary: #f9a8d4;
+            --color-bg: #111827; /* Dark Blue Background */
+            --color-text: #f9fafb; /* White Text */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .dark .card {
+            background-color: #1f2937;
+            box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.05), 0 2px 4px -2px rgba(255, 255, 255, 0.05);
+        }
+
+        /* Responsive navigation styling */
+        .mobile-nav {
+            display: none;
+        }
+        @media (max-width: 1023px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                padding-bottom: 5rem;
+            }
+            .mobile-nav {
+                display: flex;
+            }
+        }
+
+        .active-link {
+            background-color: var(--color-primary);
+            color: white !important;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .active-link svg {
+            color: white !important;
+        }
+        
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="flex min-h-screen">
+        
+        <!-- Sidebar Navigation (Desktop) -->
+        <aside class="sidebar w-64 p-4 shadow-xl sticky top-0 h-screen transition-all duration-300" style="background-color: var(--color-bg);">
+            <div class="flex items-center space-x-2 mb-8 p-2">
+                <span class="text-3xl font-extrabold text-indigo-600">Health Wealth</span>
+            </div>
+            
+            <div id="profile-selector" class="mb-6 card p-3 flex items-center justify-between cursor-pointer hover:shadow-lg">
+                <div>
+                    <div id="profileNameDisplay" class="font-bold text-sm">Loading Profile...</div>
+                    <div id="healthScore" class="text-xs text-gray-500">Score: 0</div>
+                </div>
+                <button onclick="openModal('profileModal')" class="p-1 rounded-full text-gray-500 hover:text-indigo-600"><i data-lucide="users" class="w-5 h-5"></i></button>
+            </div>
+
+            <nav id="desktop-nav" class="space-y-2">
+                <!-- Nav Links will be populated by JS -->
+            </nav>
+            
+            <div class="mt-auto pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button id="theme-toggle" class="w-full text-left p-3 flex items-center space-x-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
+                    <i data-lucide="moon" class="w-5 h-5"></i>
+                    <span>Dark Mode</span>
+                </button>
+                <button onclick="renderPage('emergency')" class="w-full text-left p-3 mt-2 flex items-center space-x-3 bg-red-500 text-white rounded-lg shadow-lg hover:bg-red-600 transition">
+                    <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+                    <span class="font-bold">SOS / Emergency</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 p-4 md:p-8 main-content">
+            <!-- Page content will be rendered here -->
+        </main>
+
+        <!-- Mobile Navigation (Bottom Bar) -->
+        <footer id="mobile-nav" class="mobile-nav fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 shadow-2xl border-t dark:border-gray-700 z-50 justify-around items-center transition-all duration-300">
+            <!-- Nav Links will be populated by JS -->
+        </footer>
+    </div>
+    
+    <!-- Modals Container -->
+    <div id="modals">
+        
+        <!-- Generic Confirmation Modal (Custom Alert/Confirm) -->
+        <div id="confirmationModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+            <div class="card p-6 w-full max-w-md">
+                <h3 id="confirmTitle" class="text-xl font-bold mb-4">Confirmation</h3>
+                <p id="confirmMessage" class="mb-6">Are you sure you want to proceed?</p>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeModal('confirmationModal')" class="px-4 py-2 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
+                    <button id="confirmActionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Management Modal -->
+        <div id="profileModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="card p-6 w-full max-w-lg">
+                <h3 class="text-2xl font-bold mb-6 flex items-center justify-between">
+                    Family Profiles
+                    <button onclick="closeModal('profileModal')" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </h3>
+
+                <div id="profileList" class="space-y-3 mb-6 max-h-60 overflow-y-auto">
+                    <!-- Profiles dynamically inserted here -->
+                </div>
+                
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    <input type="text" id="newProfileName" placeholder="Enter new profile name" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="addNewProfile()" class="w-full py-3 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition shadow-md">
+                        <i data-lucide="plus-circle" class="w-5 h-5 inline mr-2"></i> Add New Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Add Water Modal -->
+        <div id="addWaterModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="card p-6 w-full max-w-sm">
+                <h3 class="text-2xl font-bold mb-6 flex items-center justify-between">
+                    Log Water Intake
+                    <button onclick="closeModal('addWaterModal')" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </h3>
+                <input type="number" id="waterAmountInput" value="250" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 mb-4 text-2xl text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-sm text-center text-gray-500 mb-4">Amount in ml (e.g., 250, 500)</p>
+                <button onclick="logWater()" class="w-full py-3 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition shadow-md">
+                    <i data-lucide="droplet" class="w-5 h-5 inline mr-2"></i> Log Intake
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CORE APPLICATION DATA & SETUP ---
+        
+        // Use a consistent APP ID for localStorage segmentation
+        const APP_STORAGE_KEY = 'healthWealthApp_v1';
+        
+        let data = {
+            activeProfileId: null,
+            profiles: {},
+            lastUpdated: new Date().toISOString(),
+            isDarkMode: false,
+        };
+
+        const initialProfileData = (name) => ({
+            name: name,
+            score: 75,
+            waterGoal: 2500, // in ml
+            sleepGoal: 8, // in hours
+            trackers: {
+                water: [], // [{ date: '2023-10-27', amount: 250 }]
+                sleep: [], // [{ date: '2023-10-27', hours: 7.5 }]
+                vitals: [], // [{ date: '2023-10-27', weight: 70, bp: '120/80' }]
+                reminders: [], // [{ id: 'uuid', type: 'medicine', time: '14:30', note: 'Insulin' }]
+                cycle: { dates: [] }, // Only for women's health
+            }
+        });
+
+        const NAV_ITEMS = [
+            { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+            { id: 'records', label: 'Health Records', icon: 'file-text' },
+            { id: 'waterTracker', label: 'Water & Sleep', icon: 'droplet' },
+            { id: 'education', label: 'Medical Guide', icon: 'book-open' },
+            { id: 'womensHealth', label: "Women's Health", icon: 'flower' },
+            { id: 'mensHealth', label: "Men's Fitness", icon: 'dumbbell' },
+            { id: 'hygiene', label: 'Daily Hygiene', icon: 'soap-box' },
+            { id: 'utilities', label: 'Tools & Vitals', icon: 'calculator' },
+        ];
+
+        let currentPage = 'dashboard';
+        let charts = {}; // Store Chart.js instances
+
+        // --- UTILITY FUNCTIONS ---
+        
+        /**
+         * Safely gets today's date in YYYY-MM-DD format.
+         */
+        const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+        /**
+         * Loads data from localStorage, or initializes default data.
+         */
+        function loadData() {
+            try {
+                const storedData = localStorage.getItem(APP_STORAGE_KEY);
+                if (storedData) {
+                    data = { ...data, ...JSON.parse(storedData) };
+                } else {
+                    // Initialize with a default profile if no data exists
+                    const newId = crypto.randomUUID();
+                    data.profiles[newId] = initialProfileData("My Profile");
+                    data.activeProfileId = newId;
+                }
+            } catch (e) {
+                console.error("Error loading data:", e);
+                // Fallback to initial data if loading fails
+                if (Object.keys(data.profiles).length === 0) {
+                     const newId = crypto.randomUUID();
+                     data.profiles[newId] = initialProfileData("My Profile");
+                     data.activeProfileId = newId;
+                }
+            }
+        }
+
+        /**
+         * Saves the current data object to localStorage.
+         */
+        function saveData() {
+            try {
+                data.lastUpdated = new Date().toISOString();
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(data));
+                updateAllUI(); // Update UI after saving
+            } catch (e) {
+                console.error("Error saving data:", e);
+                showNotification("Error: Could not save data locally.", 'bg-red-500');
+            }
+        }
+
+        /**
+         * Displays a temporary notification banner (instead of alert/confirm).
+         */
+        function showNotification(message, className = 'bg-primary', duration = 3000) {
+            let notif = document.getElementById('notification');
+            if (!notif) {
+                notif = document.createElement('div');
+                notif.id = 'notification';
+                notif.className = 'fixed top-4 right-4 z-50 p-4 text-white rounded-lg shadow-xl transition-opacity duration-300 opacity-0';
+                document.body.appendChild(notif);
+            }
+            
+            notif.textContent = message;
+            notif.className = `fixed top-4 right-4 z-50 p-4 text-white rounded-lg shadow-xl transition-opacity duration-300 ${className}`;
+            notif.style.opacity = '1';
+            
+            setTimeout(() => {
+                notif.style.opacity = '0';
+            }, duration);
+        }
+
+        /**
+         * Gets the data for the active profile.
+         */
+        const getActiveProfile = () => data.profiles[data.activeProfileId];
+        
+        /**
+         * Opens a modal by setting the 'open' class.
+         */
+        function openModal(id) {
+            document.getElementById(id)?.classList.add('open');
+            if (id === 'profileModal') {
+                renderProfileList();
+            }
+            if (id === 'confirmationModal') {
+                document.getElementById('confirmationModal')?.classList.add('open');
+            }
+        }
+        
+        /**
+         * Closes a modal by removing the 'open' class.
+         */
+        function closeModal(id) {
+            document.getElementById(id)?.classList.remove('open');
+        }
+
+
+        // --- UI RENDERING & ERROR PREVENTION (The FIX) ---
+
+        /**
+         * Renders the navigation bars dynamically.
+         */
+        function renderNav() {
+            const desktopNav = document.getElementById('desktop-nav');
+            const mobileNav = document.getElementById('mobile-nav');
+
+            if (!desktopNav || !mobileNav) return;
+
+            desktopNav.innerHTML = '';
+            mobileNav.innerHTML = '';
+            
+            // Generate Nav Link HTML
+            const navHtml = NAV_ITEMS.map(item => {
+                const isActive = item.id === currentPage;
+                const activeClass = isActive ? 'active-link' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
+                return `
+                    <button id="nav-${item.id}" onclick="renderPage('${item.id}')" 
+                        class="w-full text-left p-3 flex items-center space-x-3 rounded-lg transition ${activeClass}">
+                        <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-white' : 'text-primary dark:text-primary'}"></i>
+                        <span>${item.label}</span>
+                    </button>
+                `;
+            }).join('');
+            
+            // Render Desktop Nav
+            desktopNav.innerHTML = navHtml;
+
+            // Render Mobile Nav (only 5 icons max)
+            const mobileItems = NAV_ITEMS.slice(0, 4).map(item => {
+                const isActive = item.id === currentPage;
+                const activeClass = isActive ? 'text-white bg-primary' : 'text-gray-500 dark:text-gray-400';
+                return `
+                    <button onclick="renderPage('${item.id}')" class="flex flex-col items-center justify-center p-2 text-xs transition ${activeClass} rounded-full w-14 h-14">
+                        <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                        <span class="hidden sm:inline">${item.label.split(' ')[0]}</span>
+                    </button>
+                `;
+            }).join('');
+
+            mobileNav.innerHTML = mobileItems + `
+                <button onclick="renderPage('emergency')" class="flex flex-col items-center justify-center p-2 text-xs text-white bg-red-500 rounded-full w-14 h-14 shadow-lg">
+                    <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+                    <span>SOS</span>
+                </button>
+            `;
+            
+            // Re-render icons for Lucide
+            lucide.createIcons();
+        }
+
+
+        /**
+         * Renders the specified page content into the main area.
+         */
+        function renderPage(pageId) {
+            currentPage = pageId;
+            const mainContent = document.getElementById('main-content');
+            if (!mainContent) return; // FIX: Prevent error if main content area doesn't exist
+
+            // Clear previous charts before rendering new content
+            Object.values(charts).forEach(chart => chart.destroy());
+            charts = {};
+
+            let contentHtml = '';
+            const profile = getActiveProfile();
+
+            const profileName = profile?.name || 'Guest';
+
+            switch (pageId) {
+                case 'dashboard':
+                    contentHtml = renderDashboard(profile);
+                    break;
+                case 'records':
+                    contentHtml = renderRecords(profile);
+                    break;
+                case 'waterTracker':
+                    contentHtml = renderWaterTracker(profile);
+                    break;
+                case 'education':
+                    contentHtml = renderEducation();
+                    break;
+                case 'womensHealth':
+                    contentHtml = renderWomensHealth(profile);
+                    break;
+                case 'mensHealth':
+                    contentHtml = renderMensHealth(profile);
+                    break;
+                case 'hygiene':
+                    contentHtml = renderHygiene();
+                    break;
+                case 'utilities':
+                    contentHtml = renderUtilities();
+                    break;
+                case 'emergency':
+                    contentHtml = renderEmergency();
+                    break;
+                default:
+                    contentHtml = `<h1 class="text-3xl font-bold">404 - Page Not Found</h1><p>The page "${pageId}" could not be loaded.</p>`;
+            }
+
+            mainContent.innerHTML = `<h1 class="text-3xl font-bold mb-6 text-indigo-600">${NAV_ITEMS.find(i => i.id === pageId)?.label || 'Emergency'} for ${profileName}</h1>` + contentHtml;
+            
+            // Re-render icons and update UI elements after DOM insertion
+            lucide.createIcons();
+            renderNav();
+            updateAllUI();
+
+            // Run post-render scripts (e.g., Chart.js initialization)
+            if (pageId === 'dashboard') initDashboardCharts(profile);
+            if (pageId === 'waterTracker') initTrackerCharts(profile);
+            if (pageId === 'womensHealth') initCycleChart(profile);
+            if (pageId === 'mensHealth') initBMIChart(profile);
+        }
+
+        /**
+         * Updates small UI elements (like profile name, score, dark mode state)
+         * FIXED: Replaced optional chaining assignment (e.g., a?.b = c) with explicit checks 
+         * to prevent "Invalid left-hand side in assignment" SyntaxError.
+         */
+        function updateAllUI() {
+            const profile = getActiveProfile();
+            
+            const profileNameDisplay = document.getElementById('profileNameDisplay');
+            if (profileNameDisplay) {
+                profileNameDisplay.textContent = profile?.name || 'Select Profile';
+            }
+
+            const healthScore = document.getElementById('healthScore');
+            if (healthScore) {
+                healthScore.textContent = `Score: ${profile?.score || 0}`;
+            }
+
+            const themeToggle = document.getElementById('theme-toggle');
+            const html = document.documentElement;
+            
+            if (data.isDarkMode) {
+                html.classList.add('dark');
+                if (themeToggle) {
+                    themeToggle.innerHTML = `<i data-lucide="sun" class="w-5 h-5"></i><span>Light Mode</span>`;
+                }
+            } else {
+                html.classList.remove('dark');
+                if (themeToggle) {
+                    themeToggle.innerHTML = `<i data-lucide="moon" class="w-5 h-5"></i><span>Dark Mode</span>`;
+                }
+            }
+            
+            lucide.createIcons();
+        }
+
+        // --- DASHBOARD RENDERER (Part of the main content) ---
+
+        function renderDashboard(profile) {
+            const today = getTodayDate();
+            const waterLog = profile?.trackers.water.find(l => l.date === today);
+            const waterAmount = waterLog ? waterLog.amount : 0;
+            const waterGoal = profile?.waterGoal || 2500;
+            const waterPercent = Math.min(100, Math.round((waterAmount / waterGoal) * 100));
+
+            const sleepLog = profile?.trackers.sleep.find(l => l.date === today);
+            const sleepHours = sleepLog ? sleepLog.hours : 0;
+            const sleepGoal = profile?.sleepGoal || 8;
+
+            const healthTip = [
+                "Stay hydrated! Proper water intake is key for energy and focus.",
+                "Get enough sleep. Aim for 7-9 hours for optimal health.",
+                "Take a 5-minute break every hour to stretch and relax your eyes.",
+                "Practice mindful breathing to reduce daily stress.",
+                "Eat at least one serving of fresh fruit today!",
+            ][Math.floor(Math.random() * 5)];
+
+            return `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Health Score Card -->
+                    <div class="card p-6 flex flex-col items-center justify-center bg-soft-blue dark:bg-blue-900/50">
+                        <i data-lucide="heart-pulse" class="w-10 h-10 text-indigo-600 dark:text-indigo-400 mb-2"></i>
+                        <div class="text-4xl font-extrabold text-indigo-700 dark:text-indigo-300">${profile?.score || 0}</div>
+                        <p class="text-gray-600 dark:text-gray-300 font-medium">Health Score</p>
+                    </div>
+
+                    <!-- Daily Tip Card -->
+                    <div class="card p-6 lg:col-span-2 bg-mint dark:bg-green-900/50">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <i data-lucide="zap" class="w-6 h-6 text-primary"></i>
+                            <h2 class="text-xl font-bold">Today's Health Tip</h2>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-200">${healthTip}</p>
+                    </div>
+                </div>
+
+                <!-- Daily Trackers Section -->
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Daily Trackers</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <!-- Water Tracker -->
+                    <div class="card p-5 bg-soft-blue/30 dark:bg-blue-900/30">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="text-lg font-semibold flex items-center"><i data-lucide="droplet" class="w-5 h-5 mr-2 text-blue-500"></i> Water Intake</div>
+                            <span class="text-2xl font-bold text-blue-600">${waterAmount}ml</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                            <div class="h-2.5 rounded-full bg-blue-500 transition-all duration-500" style="width: ${waterPercent}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">${waterPercent}% of ${waterGoal}ml goal</p>
+                        <button onclick="openModal('addWaterModal')" class="mt-4 w-full py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition">Log Water</button>
+                    </div>
+                    
+                    <!-- Sleep Tracker -->
+                    <div class="card p-5 bg-coral/30 dark:bg-pink-900/30">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="text-lg font-semibold flex items-center"><i data-lucide="moon" class="w-5 h-5 mr-2 text-pink-500"></i> Sleep Hours</div>
+                            <span class="text-2xl font-bold text-pink-600">${sleepHours}h</span>
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">Goal: ${sleepGoal} hours</div>
+                        <button onclick="showNotification('Sleep log functionality pending...')" class="mt-4 w-full py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600 transition">Log Sleep</button>
+                    </div>
+                    
+                    <!-- Vitals Summary -->
+                    <div class="card p-5 bg-cream/30 dark:bg-yellow-900/30">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="text-lg font-semibold flex items-center"><i data-lucide="activity" class="w-5 h-5 mr-2 text-yellow-600"></i> Vitals Check</div>
+                            <span class="text-xl font-medium text-yellow-700 dark:text-yellow-300">70 kg</span>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Last Weight Logged</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">BP: 120/80 (Simulated)</p>
+                        <button onclick="renderPage('utilities')" class="mt-4 w-full py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition">Log Vitals</button>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <h2 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2">Wellness Trends</h2>
+                <div class="card p-6">
+                    <canvas id="waterTrendChart"></canvas>
+                </div>
+
+                <!-- Shortcuts -->
+                <h2 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2">Quick Links</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    ${NAV_ITEMS.filter(i => i.id !== 'dashboard' && i.id !== 'emergency').map(item => `
+                        <button onclick="renderPage('${item.id}')" class="card p-4 text-center hover:shadow-xl transition-all duration-200">
+                            <i data-lucide="${item.icon}" class="w-6 h-6 mx-auto mb-2 text-indigo-500"></i>
+                            <span class="text-sm font-medium">${item.label.split(' ')[0]}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function initDashboardCharts(profile) {
+            const ctx = document.getElementById('waterTrendChart');
+            if (!ctx) return;
+
+            const logs = profile?.trackers.water || [];
+            // Sort by date and take the last 7 days
+            logs.sort((a, b) => new Date(a.date) - new Date(b.date));
+            const recentLogs = logs.slice(-7); 
+
+            const labels = recentLogs.map(l => new Date(l.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            const dataPoints = recentLogs.map(l => l.amount);
+
+            charts.waterTrendChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Water Intake (ml)',
+                        data: dataPoints,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                    }, {
+                        label: 'Goal',
+                        data: labels.map(() => profile.waterGoal),
+                        type: 'line',
+                        borderColor: 'rgba(255, 99, 132, 0.8)',
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: '7-Day Water Intake History' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Milliliters (ml)' } }
+                    }
+                }
+            });
+        }
+
+
+        // --- PROFILE LOGIC ---
+
+        function renderProfileList() {
+            const profileList = document.getElementById('profileList');
+            if (!profileList) return;
+
+            profileList.innerHTML = Object.entries(data.profiles).map(([id, p]) => {
+                const isActive = id === data.activeProfileId;
+                const activeClass = isActive ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700';
+                return `
+                    <div class="card p-4 flex items-center justify-between ${activeClass} cursor-pointer transition" onclick="switchProfile('${id}')">
+                        <div class="flex items-center space-x-3">
+                            <i data-lucide="user" class="w-6 h-6 text-indigo-500"></i>
+                            <span class="font-medium">${p.name} ${isActive ? '(Active)' : ''}</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); confirmDeleteProfile('${id}', '${p.name}')" class="p-1 rounded-full text-red-500 hover:bg-red-100 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function switchProfile(id) {
+            data.activeProfileId = id;
+            saveData();
+            closeModal('profileModal');
+            renderPage(currentPage);
+            showNotification(`Switched to profile: ${data.profiles[id].name}`, 'bg-indigo-500');
+        }
+
+        function addNewProfile() {
+            const input = document.getElementById('newProfileName');
+            const name = input?.value.trim();
+            if (name && input) {
+                if (Object.values(data.profiles).some(p => p.name === name)) {
+                    showNotification("Profile name already exists.", 'bg-yellow-500');
+                    return;
+                }
+                const newId = crypto.randomUUID();
+                data.profiles[newId] = initialProfileData(name);
+                data.activeProfileId = newId;
+                saveData();
+                input.value = '';
+                renderProfileList();
+                renderPage(currentPage);
+                showNotification(`New profile "${name}" created!`, 'bg-primary');
+                closeModal('profileModal');
+            } else {
+                showNotification("Please enter a name for the new profile.", 'bg-red-500');
+            }
+        }
+        
+        function confirmDeleteProfile(id, name) {
+            if (Object.keys(data.profiles).length === 1) {
+                showNotification("Cannot delete the last profile.", 'bg-red-500');
+                return;
+            }
+            openModal('confirmationModal');
+            document.getElementById('confirmTitle').textContent = `Delete Profile: ${name}`;
+            document.getElementById('confirmMessage').textContent = `Are you absolutely sure you want to delete the profile for ${name}? This action cannot be undone.`;
+            
+            const confirmBtn = document.getElementById('confirmActionBtn');
+            confirmBtn.onclick = () => deleteProfile(id);
+            confirmBtn.textContent = 'Yes, Delete';
+        }
+
+        function deleteProfile(id) {
+            delete data.profiles[id];
+            
+            // If the deleted profile was active, switch to the first remaining one
+            if (data.activeProfileId === id) {
+                data.activeProfileId = Object.keys(data.profiles)[0] || null;
+            }
+            
+            saveData();
+            closeModal('confirmationModal');
+            closeModal('profileModal');
+            renderProfileList();
+            renderPage(currentPage);
+            showNotification("Profile deleted successfully.", 'bg-red-500');
+        }
+
+
+        // --- TRACKER LOGIC (Water Example) ---
+
+        function logWater() {
+            const input = document.getElementById('waterAmountInput');
+            const amount = parseInt(input?.value);
+            const profile = getActiveProfile();
+
+            if (amount > 0 && profile) {
+                const today = getTodayDate();
+                let logEntry = profile.trackers.water.find(l => l.date === today);
+
+                if (logEntry) {
+                    logEntry.amount += amount;
+                } else {
+                    profile.trackers.water.push({ date: today, amount: amount });
+                }
+
+                saveData();
+                closeModal('addWaterModal');
+                renderPage('dashboard');
+                showNotification(`${amount}ml of water logged!`, 'bg-blue-500');
+            } else {
+                showNotification("Please enter a valid amount.", 'bg-red-500');
+            }
+        }
+        
+        // Placeholder render functions for other pages
+        const renderRecords = (profile) => `
+            <div class="card p-6 mb-6 bg-coral/30 dark:bg-pink-900/30">
+                <h3 class="text-xl font-bold mb-4 flex items-center"><i data-lucide="user" class="w-5 h-5 mr-2"></i> Personal Information</h3>
+                <div class="space-y-2 text-sm">
+                    <p><strong>Name:</strong> ${profile.name}</p>
+                    <p><strong>Blood Group:</strong> O+</p>
+                    <p><strong>Allergies:</strong> None known</p>
+                    <p><strong>Simulated Documents:</strong> 2 (Lab Results, Prescription)</p>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold mb-4">Visit & Vaccination Log</h3>
+            <div class="card p-4 space-y-3">
+                <p class="text-gray-500">Log entries will appear here. You can add logs, attach simulated documents, and export to PDF.</p>
+                <button onclick="simulateExport()" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-green-600 transition flex items-center"><i data-lucide="download" class="w-4 h-4 mr-2"></i> Export Health Summary (JSON)</button>
+            </div>
+        `;
+        
+        const renderWaterTracker = (profile) => `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Water Goal Setter -->
+                <div class="card p-6 bg-soft-blue/30 dark:bg-blue-900/30">
+                    <h3 class="text-xl font-bold mb-3 flex items-center"><i data-lucide="target" class="w-5 h-5 mr-2 text-blue-500"></i> Water Goal</h3>
+                    <div class="flex items-center space-x-3">
+                        <input type="number" id="waterGoalInput" value="${profile.waterGoal}" class="w-24 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600">
+                        <span class="font-medium text-lg">ml</span>
+                        <button onclick="updateWaterGoal()" class="py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Set Goal</button>
+                    </div>
+                </div>
+
+                <!-- Sleep Goal Setter -->
+                <div class="card p-6 bg-coral/30 dark:bg-pink-900/30">
+                    <h3 class="text-xl font-bold mb-3 flex items-center"><i data-lucide="target" class="w-5 h-5 mr-2 text-pink-500"></i> Sleep Goal</h3>
+                    <div class="flex items-center space-x-3">
+                        <input type="number" id="sleepGoalInput" value="${profile.sleepGoal}" class="w-24 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600">
+                        <span class="font-medium text-lg">hours</span>
+                        <button onclick="updateSleepGoal()" class="py-2 px-4 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition">Set Goal</button>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Tracking Charts</h2>
+            <div class="card p-6 mb-6">
+                <canvas id="trackerChart"></canvas>
+            </div>
+        `;
+        
+        const renderEducation = () => `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- First Aid -->
+                <div class="card p-6 bg-red-100 dark:bg-red-900/50">
+                    <h3 class="text-xl font-bold mb-2 flex items-center text-red-700 dark:text-red-300"><i data-lucide="bandage" class="w-5 h-5 mr-2"></i> First Aid Guide</h3>
+                    <ul class="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        <li>Bleeding Control</li>
+                        <li>Burns & Scalds</li>
+                        <li>Fractures & Sprains</li>
+                        <li>CPR (Simulated Instructions)</li>
+                    </ul>
+                </div>
+                <!-- Common Illness -->
+                <div class="card p-6 bg-mint/50 dark:bg-green-900/50">
+                    <h3 class="text-xl font-bold mb-2 flex items-center text-primary"><i data-lucide="thermometer" class="w-5 h-5 mr-2"></i> Common Illnesses</h3>
+                    <ul class="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        <li>Fever & Cold Management</li>
+                        <li>Dehydration Signs</li>
+                        <li>Stomach Ache Remedies</li>
+                        <li>Headache Awareness</li>
+                    </ul>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold mt-8 mb-4">Health Facts Library</h3>
+            <div class="card p-4 text-gray-500 dark:text-gray-400">
+                <p>Offline facts, tips, and articles about hygiene, mental health, and nutrition are stored here for quick search and learning.</p>
+                <button onclick="showNotification('Opening Article Library...')" class="mt-3 py-1 px-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full text-sm">Browse Articles</button>
+            </div>
+        `;
+        
+        const renderWomensHealth = (profile) => `
+            <div class="card p-6 mb-6 bg-coral/30 dark:bg-pink-900/30">
+                <h3 class="text-xl font-bold mb-4 flex items-center text-pink-600"><i data-lucide="flower" class="w-5 h-5 mr-2"></i> Cycle Tracker (Simulated)</h3>
+                <div class="text-center mb-4">
+                    <p class="text-gray-500 dark:text-gray-400">Next Period Due:</p>
+                    <p class="text-3xl font-bold text-pink-700 dark:text-pink-300">Oct 29, 2025</p>
+                    <p class="text-sm mt-1">Approx. Ovulation: Nov 12, 2025</p>
+                </div>
+                <button onclick="showNotification('Logging cycle start date...')" class="w-full py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition">Log Start Date</button>
+            </div>
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Nutrition & Hygiene</h2>
+            <div class="card p-4 bg-white dark:bg-gray-800">
+                <canvas id="cycleChart"></canvas>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">Educational tips on menstrual hygiene, vitamins, and self-care.</p>
+            </div>
+        `;
+        
+        const renderMensHealth = (profile) => {
+            const lastWeight = profile.trackers.vitals.length ? profile.trackers.vitals.slice(-1)[0].weight : 75;
+            const height = 1.75; // Simulated height in meters
+            const bmi = (lastWeight / (height * height)).toFixed(1);
+
+            return `
+                <div class="card p-6 mb-6 bg-soft-blue/30 dark:bg-blue-900/30">
+                    <h3 class="text-xl font-bold mb-4 flex items-center text-indigo-600"><i data-lucide="activity" class="w-5 h-5 mr-2"></i> BMI Calculator (Simulated)</h3>
+                    <div class="text-center mb-4">
+                        <p class="text-gray-500 dark:text-gray-400">Your Current BMI:</p>
+                        <p class="text-4xl font-extrabold text-indigo-700 dark:text-indigo-300">${bmi}</p>
+                        <p class="text-sm mt-1">Weight: ${lastWeight} kg | Height: ${height} m</p>
+                    </div>
+                    <button onclick="showNotification('Opening detailed BMI log...')" class="w-full py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">View BMI Progress</button>
+                </div>
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Lifestyle & Fitness</h2>
+                <div class="card p-4 bg-white dark:bg-gray-800">
+                    <canvas id="bmiChart"></canvas>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">Tips on managing lifestyle diseases, bodyweight workouts, and mental health.</p>
+                </div>
+            `;
+        }
+        
+        const renderHygiene = () => `
+            <div class="card p-6 mb-6 bg-mint/50 dark:bg-green-900/50">
+                <h3 class="text-xl font-bold mb-4 flex items-center text-primary"><i data-lucide="check-square" class="w-5 h-5 mr-2"></i> Daily Hygiene Checklist</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center space-x-3 text-lg cursor-pointer">
+                        <input type="checkbox" class="form-checkbox text-primary w-5 h-5 rounded" checked>
+                        <span>Brushed Teeth (Morning & Night)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 text-lg cursor-pointer">
+                        <input type="checkbox" class="form-checkbox text-primary w-5 h-5 rounded">
+                        <span>Washed Hands (5+ times)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 text-lg cursor-pointer">
+                        <input type="checkbox" class="form-checkbox text-primary w-5 h-5 rounded" checked>
+                        <span>Bathing / Shower</span>
+                    </label>
+                    <label class="flex items-center space-x-3 text-lg cursor-pointer">
+                        <input type="checkbox" class="form-checkbox text-primary w-5 h-5 rounded">
+                        <span>Clean Clothes</span>
+                    </label>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">Info on diseases caused by poor hygiene and a "Daily Clean Routine" visual tracker.</p>
+            </div>
+        `;
+        
+        const renderUtilities = () => `
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Health Utilities</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- BMI Calculator -->
+                <div class="card p-6 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold mb-2 flex items-center text-blue-600"><i data-lucide="scale" class="w-5 h-5 mr-2"></i> BMI Calculator</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Quickly calculate Body Mass Index.</p>
+                    <button onclick="showNotification('Opening BMI Calc...') " class="mt-3 py-1 px-3 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition">Go</button>
+                </div>
+                <!-- Symptom Checker -->
+                <div class="card p-6 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold mb-2 flex items-center text-yellow-600"><i data-lucide="clipboard-list" class="w-5 h-5 mr-2"></i> Symptom Checker</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Basic logic-based check (e.g., Fever + Cough $\\to$ Flu probability).</p>
+                    <button onclick="showNotification('Opening Symptom Checker...') " class="mt-3 py-1 px-3 bg-yellow-100 text-yellow-700 rounded-full text-sm hover:bg-yellow-200 transition">Go</button>
+                </div>
+            </div>
+        `;
+        
+        const renderEmergency = () => `
+            <div class="p-8 rounded-xl text-center shadow-2xl" style="background-color: var(--color-coral); color: #831843;">
+                <i data-lucide="alert-triangle" class="w-16 h-16 mx-auto mb-4 text-red-700 animate-pulse"></i>
+                <h2 class="text-4xl font-extrabold mb-4 text-red-800">EMERGENCY SOS</h2>
+                <p class="text-xl font-semibold mb-6">Act immediately. Follow these offline steps.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="card p-4 bg-white/70">
+                        <p class="text-lg font-bold">Ambulance (India)</p>
+                        <p class="text-2xl font-extrabold text-red-600">102 / 108</p>
+                    </div>
+                    <div class="card p-4 bg-white/70">
+                        <p class="text-lg font-bold">Fire</p>
+                        <p class="text-2xl font-extrabold text-red-600">101</p>
+                    </div>
+                    <div class="card p-4 bg-white/70">
+                        <p class="text-lg font-bold">Police</p>
+                        <p class="text-2xl font-extrabold text-red-600">100</p>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-bold mb-4 text-red-700">My Emergency Info</h3>
+                <div class="card p-4 bg-white/80 space-y-2 text-left text-lg font-medium text-gray-800">
+                    <p><strong>Active Profile:</strong> ${getActiveProfile().name}</p>
+                    <p><strong>Blood Group:</strong> O+ (Simulated)</p>
+                    <p><strong>Allergies:</strong> None (Simulated)</p>
+                    <p><strong>Contact 1:</strong> +91 98765 43210 (Simulated)</p>
+                </div>
+                <button onclick="showNotification('Generating QR Code with health data...', 'bg-red-700')" class="mt-6 w-full py-3 bg-red-700 text-white font-bold rounded-lg hover:bg-red-800 transition shadow-lg">
+                    <i data-lucide="qr-code" class="w-5 h-5 inline mr-2"></i> Show Health QR Card
+                </button>
+            </div>
+        `;
+
+        // --- CHART JS INITIALIZERS (Placeholders for other charts) ---
+
+        function initTrackerCharts(profile) {
+             const ctx = document.getElementById('trackerChart');
+             if (!ctx) return;
+
+             const sleepLogs = profile?.trackers.sleep || [];
+             const waterLogs = profile?.trackers.water || [];
+
+             // Merge and sort logs by date (simulated)
+             const dates = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+             const waterData = [2000, 2200, 1500, 2500, 2100, 2300, 2400];
+             const sleepData = [7.5, 8.0, 6.5, 8.5, 7.8, 8.2, 9.0];
+
+             charts.trackerChart = new Chart(ctx, {
+                 type: 'line',
+                 data: {
+                     labels: dates,
+                     datasets: [
+                         {
+                             label: 'Water Intake (ml)',
+                             data: waterData,
+                             borderColor: 'rgba(59, 130, 246, 1)',
+                             backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                             yAxisID: 'y1',
+                             tension: 0.4,
+                             fill: true,
+                         },
+                         {
+                             label: 'Sleep Hours',
+                             data: sleepData,
+                             borderColor: 'rgba(236, 72, 153, 1)',
+                             backgroundColor: 'rgba(236, 72, 153, 0.2)',
+                             yAxisID: 'y2',
+                             tension: 0.4,
+                             fill: false,
+                         }
+                     ]
+                 },
+                 options: {
+                     responsive: true,
+                     interaction: { mode: 'index', intersect: false },
+                     stacked: false,
+                     scales: {
+                         y1: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Water (ml)' } },
+                         y2: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Sleep (hours)' }, grid: { drawOnChartArea: false } }
+                     }
+                 }
+             });
+        }
+        
+        function initCycleChart(profile) {
+            const ctx = document.getElementById('cycleChart');
+            if (!ctx) return;
+            
+            // Simulated data for cycle tracking
+            const dates = ['Day 1', 'Day 7', 'Day 14', 'Day 21', 'Day 28'];
+            const mood = [8, 5, 9, 7, 6];
+            
+            charts.cycleChart = new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Follicular', 'Ovulation', 'Luteal', 'Menstruation'],
+                    datasets: [{
+                        data: [7, 3, 10, 5],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(236, 72, 153, 0.7)',
+                            'rgba(251, 191, 36, 0.7)',
+                            'rgba(239, 68, 68, 0.7)',
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: 'Hormonal/Mood Phase Balance' }
+                    }
+                }
+            });
+        }
+        
+        function initBMIChart(profile) {
+             const ctx = document.getElementById('bmiChart');
+             if (!ctx) return;
+             
+             // Simulated historical BMI data
+             const history = [
+                 { date: '2024-06', weight: 80 },
+                 { date: '2024-07', weight: 78 },
+                 { date: '2024-08', weight: 75 },
+                 { date: '2024-09', weight: 73 },
+                 { date: '2024-10', weight: 70 }
+             ];
+             const height = 1.75;
+             const bmiData = history.map(h => (h.weight / (height * height)).toFixed(1));
+
+             charts.bmiChart = new Chart(ctx, {
+                 type: 'line',
+                 data: {
+                     labels: history.map(h => h.date),
+                     datasets: [{
+                         label: 'BMI Trend',
+                         data: bmiData,
+                         borderColor: 'rgba(79, 70, 229, 1)',
+                         backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                         tension: 0.4,
+                         fill: true,
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     plugins: {
+                         legend: { position: 'top' },
+                         title: { display: true, text: 'BMI Over Time' }
+                     },
+                     scales: {
+                         y: { beginAtZero: false, title: { display: true, text: 'BMI Score' } }
+                     }
+                 }
+             });
+        }
+
+        // --- MISC HANDLERS ---
+        
+        function simulateExport() {
+            try {
+                const profile = getActiveProfile();
+                const jsonContent = JSON.stringify(profile, null, 2);
+                const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8" });
+                saveAs(blob, `HealthWealth_Data_${profile.name}_${getTodayDate()}.json`);
+                showNotification("Health data exported as JSON file!", 'bg-primary');
+            } catch (e) {
+                console.error('Export failed:', e);
+                showNotification('Export failed. Check console for details.', 'bg-red-500');
+            }
+        }
+        
+        function updateWaterGoal() {
+            const input = document.getElementById('waterGoalInput');
+            const goal = parseInt(input?.value);
+            const profile = getActiveProfile();
+
+            if (goal > 500 && profile) {
+                profile.waterGoal = goal;
+                saveData();
+                renderPage('waterTracker');
+                showNotification(`Water goal updated to ${goal}ml.`, 'bg-blue-500');
+            } else {
+                showNotification("Goal must be greater than 500ml.", 'bg-red-500');
+            }
+        }
+
+        function updateSleepGoal() {
+            const input = document.getElementById('sleepGoalInput');
+            const goal = parseFloat(input?.value);
+            const profile = getActiveProfile();
+
+            if (goal >= 4 && goal <= 12 && profile) {
+                profile.sleepGoal = goal;
+                saveData();
+                renderPage('waterTracker');
+                showNotification(`Sleep goal updated to ${goal} hours.`, 'bg-pink-500');
+            } else {
+                showNotification("Sleep goal must be between 4 and 12 hours.", 'bg-red-500');
+            }
+        }
+
+        function toggleTheme() {
+            data.isDarkMode = !data.isDarkMode;
+            saveData();
+            updateAllUI();
+        }
+
+        // --- INITIALIZATION ---
+        
+        function initApp() {
+            loadData();
+            
+            // Set initial theme state based on loaded data
+            updateAllUI(); 
+
+            // Initialize theme toggle listener
+            document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+
+            // Render the initial page (Dashboard)
+            renderPage('dashboard');
+            
+            showNotification('Welcome back! App data loaded locally.', 'bg-indigo-500', 4000);
+        }
+
+        // Wait for the DOM to be fully loaded before running JS
+        window.addEventListener('DOMContentLoaded', initApp);
+
+        // Re-initialize Lucide icons once on load
+        window.addEventListener('load', () => lucide.createIcons());
+
+    </script>
+</body>
+</html>
